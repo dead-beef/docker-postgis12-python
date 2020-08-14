@@ -1,0 +1,34 @@
+#!/bin/bash
+
+SUDO=
+IMAGE=postgis12-python
+NAME="$IMAGE"
+
+( id -Gn | grep -q docker ) || SUDO=sudo
+
+if [[ $# -gt 1 || $1 == -h || $1 == --help ]]; then
+	cat >&2 <<EOF
+usage: $0 [name]
+
+optional arguments:
+  [name]    docker container name (default: ${NAME})
+EOF
+	exit 1
+fi
+
+(( $# > 0 )) && NAME="$1"
+
+echo "finding started instances..." >&2
+
+for c in $($SUDO docker ps -a -q --filter ancestor="$IMAGE" --filter name="$NAME"); do
+	running="$(${SUDO} docker inspect -f {{.State.Running}} ${c})"
+	if [[ $running == true ]]; then
+		echo "stopping ${c}..." >&2
+		exec $SUDO docker stop "$c"
+	else
+		echo "${c} is already stopped" >&2
+		exit
+	fi
+done
+
+echo "no instances found" >&2

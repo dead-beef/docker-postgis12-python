@@ -1,0 +1,79 @@
+#!/bin/bash
+
+SUDO=
+declare -a ARGS=()
+IMAGE=postgis12-python
+NAME="$IMAGE"
+DATA_DIR=
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=mysecretpassword
+DOCKER_DATA_DIR=/var/lib/postgresql/data
+POSTGRES_IP=127.0.0.1
+POSTGRES_PORT=5432
+
+USAGE="$(cat <<EOF
+usage: $0 [-n <name>] [-d <directory>] [-h <ip>] [-p <port>] [-P <password>]
+
+optional arguments:
+  -n <name>       set docker container name (default: ${NAME})
+  -d <directory>  set data directory (default: \${HOME}/.postgres/<name>)
+  -h <ip>         set postgres ip (default: ${POSTGRES_IP})
+  -p <port>       set postgres port (default: ${POSTGRES_PORT})
+  -P <password>   set postgres user password (default: ${POSTGRES_PASSWORD})
+EOF
+)"
+
+( id -Gn | grep -q docker ) || SUDO=sudo
+
+parse_args() {
+    local OPTIND OPTARG OPT
+    while getopts "n:h:p:P:" OPT; do
+        case "$OPT" in
+            n) NAME="${OPTARG}";;
+			d) DATA_DIR="${OPTARG}";;
+			h) POSTGRES_IP="${OPTARG}";;
+			p) POSTGRES_PORT="${OPTARG}";;
+			P) POSTGRES_PASSWORD="${OPTARG}";;
+            *)
+                echo "$USAGE" >&2
+				exit 1
+                ;;
+        esac
+    done
+    shift $((OPTIND-1))
+	[[ -z $DATA_DIR ]] && DATA_DIR="${HOME}/.postgres/${NAME}"
+}
+
+find_stopped_instances() {
+	echo "finding stopped instances..." >&2
+	for c in $(${SUDO} docker ps -a -q --filter ancestor="$IMAGE" --filter name="$NAME"); do
+		running="$(${SUDO} docker inspect -f {{.State.Running}} ${c})"
+		if [[ $running == true ]]; then
+			echo "${c} is already running" >&2
+			exit
+		else
+			echo "restarting ${c}..." >&2
+			exec ${SUDO} docker start "${c}"
+		fi
+	done
+}
+
+prepare_docker_parameters() {
+	if [[ ! -d $DATA_DIR ]]; then
+		mkdir -pv "$DATA_DIR" && chmod 755 "$DATA_DIR" || exit 1
+	fi
+
+	ARGS+=("--publish=${POSTGRES_IP}:${POSTGRES_PORT}:5432")
+
+	ARGS+=("--env=POSTGRES_PASSWORD=${POSTGRES_PASSWORD}")
+	ARGS+=("--env=PGDATA=${DOCKER_DATA_DIR}")
+
+	ARGS+=("--volume=${DATA_DIR}:${DOCKER_DATA_DIR}")
+}
+
+parse_args "$@"
+find_stopped_instances
+prepare_docker_parameters
+
+echo "starting ${IMAGE}..."
+${SUDO} docker run -d "${ARGS[@]}" --name "$NAME" "$IMAGE" "$@"

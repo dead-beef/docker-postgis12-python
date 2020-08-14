@@ -1,0 +1,12 @@
+#!/bin/bash
+
+NAME="$(basename "$(pwd)")"
+NAME="${NAME/#docker-/}"
+
+SUDO=
+( id -Gn | grep -q docker ) || SUDO=sudo
+
+mkdir -p ${HOME}/.local/bin \
+	&& cp -vf ./start "${HOME}/.local/bin/${NAME}" \
+	&& cp -vf ./stop "${HOME}/.local/bin/${NAME}-stop" \
+	&& ${SUDO} docker build -t "$NAME" .
