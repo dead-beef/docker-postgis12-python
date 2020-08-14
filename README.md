@@ -20,11 +20,11 @@ This image is based on [`postgis/postgis`](https://github.com/postgis/docker-pos
 usage: ~/.local/bin/postgis12-python [-n <name>] [-d <directory>] [-h <ip>] [-p <port>] [-P <password>]
 
 optional arguments:
-  -n <name>       set docker container name (default: ${NAME})
+  -n <name>       set docker container name (default: postgis12-python)
   -d <directory>  set data directory (default: ${HOME}/.postgres/<name>)
-  -h <ip>         set postgres ip (default: ${POSTGRES_IP})
-  -p <port>       set postgres port (default: ${POSTGRES_PORT})
-  -P <password>   set postgres user password (default: ${POSTGRES_PASSWORD})
+  -h <ip>         set postgres ip (default: 127.0.0.1)
+  -p <port>       set postgres port (default: 5432)
+  -P <password>   set postgres user password (default: mysecretpassword)
 EOF
 ```
 
